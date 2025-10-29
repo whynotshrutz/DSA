@@ -1,136 +1,154 @@
+import java.util.*;
+import java.util.function.IntUnaryOperator;
+
 public class Sorting {
 
-    // Bubble Sort
-    public static void bubbleSort(int[] arr) {
-        int n = arr.length;
-        for (int i = 0; i < n - 1; i++) {
-            for (int j = 0; j < n - i - 1; j++) {
-                if (arr[j] > arr[j + 1]) {
-                    int temp = arr[j];
-                    arr[j] = arr[j + 1];
-                    arr[j + 1] = temp;
-                }
+    /* ---------- Utilities ---------- */
+    private static void swap(int[] a, int i, int j){ int t = a[i]; a[i] = a[j]; a[j] = t; }
+    private static boolean isSorted(int[] a){ for(int i=1;i<a.length;i++) if(a[i] < a[i-1]) return false; return true; }
+
+    /* ---------- O(n^2) ---------- */
+    public static void insertionSort(int[] a){
+        for (int i=1;i<a.length;i++){
+            int key=a[i], j=i-1;
+            while (j>=0 && a[j]>key){ a[j+1]=a[j]; j--; }
+            a[j+1]=key;
+        }
+    }
+    public static void selectionSort(int[] a){
+        for (int i=0;i<a.length-1;i++){
+            int m=i;
+            for(int j=i+1;j<a.length;j++) if(a[j]<a[m]) m=j;
+            swap(a,i,m);
+        }
+    }
+    public static void bubbleSort(int[] a){
+        boolean swapped=true;
+        for(int n=a.length; swapped && n>1; n--){
+            swapped=false;
+            for(int i=1;i<n;i++){
+                if(a[i-1]>a[i]){ swap(a,i-1,i); swapped=true; }
             }
         }
     }
 
-    // Selection Sort
-    public static void selectionSort(int[] arr) {
-        int n = arr.length;
-        for (int i = 0; i < n - 1; i++) {
-            int minIndex = i;
-            for (int j = i + 1; j < n; j++) {
-                if (arr[j] < arr[minIndex]) minIndex = j;
+    /* ---------- Merge Sort (stable) ---------- */
+    public static void mergeSort(int[] a){ mergeSort(a,0,a.length-1,new int[a.length]); }
+    private static void mergeSort(int[] a,int l,int r,int[] buf){
+        if(l>=r) return;
+        int m=(l+r)>>>1;
+        mergeSort(a,l,m,buf); mergeSort(a,m+1,r,buf);
+        int i=l,j=m+1,k=l;
+        while(i<=m && j<=r) buf[k++]= (a[i]<=a[j])? a[i++]:a[j++];
+        while(i<=m) buf[k++]=a[i++]; while(j<=r) buf[k++]=a[j++];
+        for(i=l;i<=r;i++) a[i]=buf[i];
+    }
+
+    /* ---------- Quick Sort (3-way, tail-rec) ---------- */
+    public static void quickSort(int[] a){ quick(a,0,a.length-1,new Random(42)); }
+    private static void quick(int[] a,int l,int r, Random rng){
+        while(l<r){
+            int p=l+r>>>1;
+            int pivot = a[p];
+            int i=l, lt=l, gt=r;
+            while(i<=gt){
+                if(a[i]<pivot) swap(a,lt++,i++);
+                else if(a[i]>pivot) swap(a,i,gt--);
+                else i++;
             }
-            int temp = arr[minIndex];
-            arr[minIndex] = arr[i];
-            arr[i] = temp;
+            // Recurse into smaller side first (tail recursion)
+            if(lt-l < r-gt){ quick(a,l,lt-1,rng); l=gt+1; }
+            else { quick(a,gt+1,r,rng); r=lt-1; }
         }
     }
 
-    // Insertion Sort
-    public static void insertionSort(int[] arr) {
-        for (int i = 1; i < arr.length; i++) {
-            int key = arr[i];
-            int j = i - 1;
-            while (j >= 0 && arr[j] > key) {
-                arr[j + 1] = arr[j];
-                j--;
-            }
-            arr[j + 1] = key;
+    /* ---------- Heap Sort ---------- */
+    public static void heapSort(int[] a){
+        int n=a.length;
+        for(int i=n/2-1;i>=0;i--) heapify(a,n,i);
+        for(int end=n-1; end>0; end--){
+            swap(a,0,end);
+            siftDown(a,0,end);
+        }
+    }
+    private static void heapify(int[] a,int n,int i){ siftDown(a,i,n); }
+    private static void siftDown(int[] a,int i,int n){
+        for(;;){
+            int l=2*i+1, r=l+1, m=i;
+            if(l<n && a[l]>a[m]) m=l;
+            if(r<n && a[r]>a[m]) m=r;
+            if(m==i) break;
+            swap(a,i,m); i=m;
         }
     }
 
-    // Merge Sort
-    public static void mergeSort(int[] arr, int l, int r) {
-        if (l < r) {
-            int m = l + (r - l) / 2;
-            mergeSort(arr, l, m);
-            mergeSort(arr, m + 1, r);
-            merge(arr, l, m, r);
+    /* ---------- Counting Sort (non-negative small ints) ---------- */
+    public static void countingSort(int[] a){
+        if(a.length==0) return;
+        int max=0; for(int v: a) if(v>max) max=v;
+        int[] c=new int[max+1];
+        for(int v: a) c[v]++;
+        int i=0;
+        for(int v=0; v<c.length; v++) while(c[v]-- > 0) a[i++]=v;
+    }
+
+    /* ---------- Radix Sort (LSD base 256) ---------- */
+    public static void radixSortNonNegative(int[] a){
+        int n=a.length; if(n==0) return;
+        int[] out=new int[n];
+        for(int shift=0; shift<32; shift+=8){
+            int[] cnt=new int[256];
+            for(int v: a) cnt[(v>>>shift)&255]++;
+            int sum=0; for(int i=0;i<256;i++){ int t=cnt[i]; cnt[i]=sum; sum+=t; }
+            for(int v: a) out[cnt[(v>>>shift)&255]++]=v;
+            System.arraycopy(out,0,a,0,n);
         }
     }
 
-    private static void merge(int[] arr, int l, int m, int r) {
-        int n1 = m - l + 1;
-        int n2 = r - m;
-        int[] L = new int[n1];
-        int[] R = new int[n2];
-        for (int i = 0; i < n1; i++) L[i] = arr[l + i];
-        for (int j = 0; j < n2; j++) R[j] = arr[m + 1 + j];
-
-        int i = 0, j = 0, k = l;
-        while (i < n1 && j < n2) {
-            if (L[i] <= R[j]) arr[k++] = L[i++];
-            else arr[k++] = R[j++];
-        }
-        while (i < n1) arr[k++] = L[i++];
-        while (j < n2) arr[k++] = R[j++];
-    }
-
-    // Quick Sort
-    public static void quickSort(int[] arr, int low, int high) {
-        if (low < high) {
-            int pi = partition(arr, low, high);
-            quickSort(arr, low, pi - 1);
-            quickSort(arr, pi + 1, high);
-        }
-    }
-
-    private static int partition(int[] arr, int low, int high) {
-        int pivot = arr[high];
-        int i = low - 1;
-        for (int j = low; j < high; j++) {
-            if (arr[j] < pivot) {
-                i++;
-                int temp = arr[i];
-                arr[i] = arr[j];
-                arr[j] = temp;
+    /* ---------- Shell Sort (Ciura-ish gaps) ---------- */
+    public static void shellSort(int[] a){
+        int[] gaps = {701,301,132,57,23,10,4,1};
+        for(int g: gaps){
+            for(int i=g;i<a.length;i++){
+                int t=a[i], j=i;
+                while(j>=g && a[j-g]>t){ a[j]=a[j-g]; j-=g; }
+                a[j]=t;
             }
         }
-        int temp = arr[i + 1];
-        arr[i + 1] = arr[high];
-        arr[high] = temp;
-        return i + 1;
     }
 
-    // Utility function to print an array
-    public static void printArray(int[] arr) {
-        for (int num : arr) System.out.print(num + " ");
-        System.out.println();
+    /* ---------- CLI ---------- */
+    private static Map<String, java.util.function.Consumer<int[]>> algos(){
+        Map<String, java.util.function.Consumer<int[]>> m = new LinkedHashMap<>();
+        m.put("insertion", Sorting::insertionSort);
+        m.put("selection", Sorting::selectionSort);
+        m.put("bubble", Sorting::bubbleSort);
+        m.put("merge", Sorting::mergeSort);
+        m.put("quick", Sorting::quickSort);
+        m.put("heap", Sorting::heapSort);
+        m.put("counting", Sorting::countingSort);
+        m.put("radix", Sorting::radixSortNonNegative);
+        m.put("shell", Sorting::shellSort);
+        return m;
     }
 
-    // Main to test all sorts
-    public static void main(String[] args) {
-        int[] arr = {64, 25, 12, 22, 11};
-        System.out.println("Original array:");
-        printArray(arr);
+    public static void main(String[] args){
+        String algo = args.length>0 ? args[0].toLowerCase() : "quick";
+        int n = args.length>1 ? Integer.parseInt(args[1]) : 100000;
+        int seed = args.length>2 ? Integer.parseInt(args[2]) : 7;
 
-        int[] arr1 = arr.clone();
-        bubbleSort(arr1);
-        System.out.print("Bubble Sort: ");
-        printArray(arr1);
+        int[] a = new Random(seed).ints(n, 0, Math.max(10, n)).toArray();
 
-        int[] arr2 = arr.clone();
-        selectionSort(arr2);
-        System.out.print("Selection Sort: ");
-        printArray(arr2);
+        var m = algos();
+        if(!m.containsKey(algo)){
+            System.out.println("Algos: "+m.keySet());
+            return;
+        }
+        long t0=System.nanoTime();
+        m.get(algo).accept(a);
+        long t1=System.nanoTime();
 
-        int[] arr3 = arr.clone();
-        insertionSort(arr3);
-        System.out.print("Insertion Sort: ");
-        printArray(arr3);
-
-        int[] arr4 = arr.clone();
-        mergeSort(arr4, 0, arr4.length - 1);
-        System.out.print("Merge Sort: ");
-        printArray(arr4);
-
-        int[] arr5 = arr.clone();
-        quickSort(arr5, 0, arr5.length - 1);
-        System.out.print("Quick Sort: ");
-        printArray(arr5);
+        System.out.printf(Locale.ROOT, "algo=%s n=%d millis=%.3f sorted=%s%n",
+                algo, n, (t1-t0)/1e6, isSorted(a));
     }
 }
-
-// refactora test
